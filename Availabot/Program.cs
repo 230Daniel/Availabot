@@ -1,6 +1,5 @@
 ﻿using System;
 using Disqord;
-using Disqord.Bot;
 using Disqord.Bot.Hosting;
 using Disqord.Extensions.Interactivity;
 using Disqord.Gateway;
@@ -9,6 +8,7 @@ using Availabot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Database.Contexts;
 
 namespace Availabot
 {
@@ -54,6 +54,7 @@ namespace Availabot
         static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
             services.AddInteractivity();
+            services.AddDbContext<DatabaseContext>();
         }
     }
 }

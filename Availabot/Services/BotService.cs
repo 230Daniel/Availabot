@@ -4,7 +4,7 @@ using Disqord;
 using Disqord.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Availabot
+namespace Availabot.Services
 {
     public class BotService : DiscordClientService
     {

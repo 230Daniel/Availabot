@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Configuration
 Availabot/appsettings*
+
+# Database
+Database/Migrations

@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.31025.194
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Availabot", "Availabot\Availabot.csproj", "{B047D3FB-915A-4EB9-8A71-547793A31283}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Database", "Database\Database.csproj", "{920CAD5D-9E24-4046-93A0-1C79589491A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{B047D3FB-915A-4EB9-8A71-547793A31283}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B047D3FB-915A-4EB9-8A71-547793A31283}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B047D3FB-915A-4EB9-8A71-547793A31283}.Release|Any CPU.Build.0 = Release|Any CPU
+		{920CAD5D-9E24-4046-93A0-1C79589491A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{920CAD5D-9E24-4046-93A0-1C79589491A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{920CAD5D-9E24-4046-93A0-1C79589491A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{920CAD5D-9E24-4046-93A0-1C79589491A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
