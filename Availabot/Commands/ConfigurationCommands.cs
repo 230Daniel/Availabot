@@ -8,8 +8,11 @@ using Disqord.Bot;
 using Microsoft.Extensions.Logging;
 using Qmmands;
 using Availabot.Extensions;
+using Availabot.Services;
+using Availabot.Utils;
 using Disqord.Extensions.Interactivity;
 using Disqord.Gateway;
+using Disqord.Rest;
 
 namespace Availabot.Commands
 {
@@ -17,11 +20,13 @@ namespace Availabot.Commands
     {
         ILogger _logger;
         DatabaseContext _db;
+        AvailabilityService _availability;
 
-        public ConfigurationCommands(ILoggerProvider loggerProvider, DatabaseContext db)
+        public ConfigurationCommands(ILoggerProvider loggerProvider, DatabaseContext db, AvailabilityService availability)
         {
             _logger = loggerProvider.CreateLogger("ConfigurationCommands");
             _db = db;
+            _availability = availability;
         }
 
         [Command("Setup"), RequireAuthorGuildPermissions(Permission.ManageGuild)]
@@ -41,7 +46,9 @@ namespace Availabot.Commands
                     await Response("Setup cancelled.");
                     return;
                 }
-                if(Mention.TryParseChannel(response.Message.Content, out Snowflake channelId)) config.ChannelId = channelId;
+                if(Mention.TryParseChannel(response.Message.Content, out Snowflake channelId) && 
+                   Context.Guild.Channels.TryGetValue(channelId, out IGuildChannel guildChannel) && 
+                   guildChannel is ITextChannel) config.ChannelId = channelId;
                 else await Response("Invalid input, please try again.");
             }
 
@@ -55,12 +62,27 @@ namespace Availabot.Commands
                     await Response("Setup cancelled.");
                     return;
                 }
-                if(Mention.TryParseRole(response.Message.Content, out Snowflake roleId)) config.RoleId = roleId;
+                if(Mention.TryParseRole(response.Message.Content, out Snowflake roleId) && 
+                   Context.Guild.Roles.TryGetValue(roleId, out _)) config.RoleId = roleId;
                 else await Response("Invalid input, please try again.");
             }
 
+            ITextChannel channel = Context.Guild.Channels.First(x => x.Key == config.ChannelId).Value as ITextChannel;
+            IUserMessage message = await channel.SendMessageAsync(new LocalMessageBuilder()
+                .WithContent("This message will be modified shortly...")
+                .Build());
+
+            foreach (IEmoji emoji in Constants.NumberEmojis.Take(5))
+            {
+                await message.AddReactionAsync(emoji);
+            }
+
+            config.MessageId = message.Id;
+
             _db.GuildConfigurations.Update(config);
             await _db.SaveChangesAsync();
+
+            await _availability.UpdateGuildMessageAsync(Context.GuildId);
 
             await Context.Channel.SendSuccessAsync("Setup completed");
         }

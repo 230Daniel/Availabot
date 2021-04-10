@@ -55,6 +55,7 @@ namespace Availabot
         {
             services.AddInteractivity();
             services.AddDbContext<DatabaseContext>();
+            services.AddSingleton<AvailabilityService>();
         }
     }
 }
