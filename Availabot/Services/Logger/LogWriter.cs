@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace DisqordTestBot.Services
+namespace Availabot.Services
 {
     static class LogWriter
     {

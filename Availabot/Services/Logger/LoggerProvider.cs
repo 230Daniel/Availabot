@@ -2,7 +2,7 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace DisqordTestBot.Services
+namespace Availabot.Services
 {
     public sealed class LoggerProvider : ILoggerProvider
     {
