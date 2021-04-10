@@ -1,4 +1,5 @@
 ﻿using System;
+using Availabot.Commands.TypeParsers;
 using Disqord;
 using Disqord.Bot.Hosting;
 using Disqord.Extensions.Interactivity;
@@ -54,8 +55,9 @@ namespace Availabot
         static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
             services.AddInteractivity();
-            services.AddDbContext<DatabaseContext>();
+            services.AddDbContextFactory<DatabaseContext>();
             services.AddSingleton<AvailabilityService>();
+            services.AddSingleton<TimeSpanTypeParser>();
         }
     }
 }

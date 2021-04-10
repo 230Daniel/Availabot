@@ -1,8 +1,10 @@
-﻿using System.Linq;
+﻿using System;
 using System.Threading.Tasks;
+using Availabot.Extensions;
+using Availabot.Services;
 using Database.Contexts;
-using Database.Models;
 using Disqord.Bot;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Qmmands;
 
@@ -11,35 +13,30 @@ namespace Availabot.Commands
     public class AvailabilityCommands : DiscordGuildModuleBase
     {
         ILogger _logger;
-        DatabaseContext _db;
+        IDbContextFactory<DatabaseContext> _db;
+        AvailabilityService _availability;
 
-        public AvailabilityCommands(ILoggerProvider loggerProvider, DatabaseContext db)
+        public AvailabilityCommands(ILoggerProvider loggerProvider, IDbContextFactory<DatabaseContext> db, AvailabilityService availability)
         {
             _logger = loggerProvider.CreateLogger("AvailabilityCommands");
             _db = db;
+            _availability = availability;
         }
 
-        [Command("TestAdd")]
-        public async Task TestAdd()
+        [Command("available")]
+        public async Task Available([Remainder] TimeSpan timespan)
         {
-            AvailabilityPeriod period = new AvailabilityPeriod()
-            {
-                UserId = Context.Author.Id,
-                GuildId = Context.GuildId
-            };
-
-            await _db.AvailabilityPeriods.AddAsync(period);
-            await _db.SaveChangesAsync();
-
-            await Response("Added an availability period.");
+            _logger.LogDebug($"{Context.Author} wants to be available for {timespan}");
+            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, timespan);
+            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {timespan.ToLongString()}");
         }
 
-        [Command("TestGet")]
-        public async Task TestGet()
+        [Command("unavailable")]
+        public async Task Unavailable()
         {
-            IQueryable<AvailabilityPeriod> periods = _db.AvailabilityPeriods.Where(x => x.UserId == Context.Author.Id.RawValue && x.GuildId == Context.GuildId.RawValue);
-
-            await Response($"You have {periods.Count()} availability periods.");
+            _logger.LogDebug($"{Context.Author} wants to be unavailable");
+            await _availability.MakeUserUnavailableAsync(Context.GuildId, Context.Author.Id);
+            await Context.Channel.SendSuccessAsync("Marked as unavailable");
         }
     }
 }

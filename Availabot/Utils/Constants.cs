@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Disqord;
+﻿using Disqord;
 
 namespace Availabot.Utils
 {
@@ -20,5 +15,7 @@ namespace Availabot.Utils
             new LocalEmoji("8️⃣"),
             new LocalEmoji("9️⃣")
         };
+
+        public static IEmoji XEmoji = new LocalEmoji("❌");
     }
 }

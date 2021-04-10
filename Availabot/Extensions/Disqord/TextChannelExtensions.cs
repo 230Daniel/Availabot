@@ -1,9 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Availabot.Services;
+﻿using System.Threading.Tasks;
 using Disqord;
-using Disqord.Gateway;
 using Disqord.Rest;
 using Availabot.Utils;
 
@@ -11,31 +7,34 @@ namespace Availabot.Extensions
 {
     static class TextChannelExtensions
     {
-        public static async Task<IUserMessage> SendInfoAsync(this ITextChannel channel, string title, string content = null)
+        public static async Task<IUserMessage> SendInfoAsync(this ITextChannel channel, string title, string content = null, string raw = null)
         {
-            LocalMessage message = new LocalMessageBuilder()
-                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Info, title, content))
-                .Build();
+            LocalMessageBuilder builder = new LocalMessageBuilder()
+                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Info, title, content));
 
-            return await channel.SendMessageAsync(message);
+            if(raw is not null) builder.Content = raw;
+
+            return await channel.SendMessageAsync(builder.Build());
         }
 
-        public static async Task<IUserMessage> SendSuccessAsync(this ITextChannel channel, string title, string content = null)
+        public static async Task<IUserMessage> SendSuccessAsync(this ITextChannel channel, string title, string content = null, string raw = null)
         {
-            LocalMessage message = new LocalMessageBuilder()
-                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Success, title, content))
-                .Build();
+            LocalMessageBuilder builder = new LocalMessageBuilder()
+                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Success, title, content));
 
-            return await channel.SendMessageAsync(message);
+            if(raw is not null) builder.Content = raw;
+
+            return await channel.SendMessageAsync(builder.Build());
         }
 
-        public static async Task<IUserMessage> SendFailureAsync(this ITextChannel channel, string title, string content = null, bool supportLink = true)
+        public static async Task<IUserMessage> SendFailureAsync(this ITextChannel channel, string title, string content = null, bool supportLink = true, string raw = null)
         {
-            LocalMessage message = new LocalMessageBuilder()
-                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Failure, title, content))
-                .Build();
+            LocalMessageBuilder builder = new LocalMessageBuilder()
+                .WithEmbed(MessageUtils.CreateEmbed(EmbedType.Failure, title, content));
 
-            return await channel.SendMessageAsync(message);
+            if(raw is not null) builder.Content = raw;
+
+            return await channel.SendMessageAsync(builder.Build());
         }
 
         public static async Task<IUserMessage> SendEmbedAsync(this ITextChannel channel, LocalEmbedBuilder embed)

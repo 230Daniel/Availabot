@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Availabot.Commands.TypeParsers;
 using Disqord;
 using Disqord.Bot;
 using Disqord.Bot.Sharding;
@@ -69,6 +72,12 @@ namespace Availabot.Implementations
             return new LocalMessageBuilder()
                 .WithEmbed(embed)
                 .WithMentions(LocalMentionsBuilder.None);
+        }
+
+        protected override ValueTask AddTypeParsersAsync(CancellationToken cancellationToken = default)
+        {
+            Commands.AddTypeParser(new TimeSpanTypeParser());
+            return base.AddTypeParsersAsync(cancellationToken);
         }
 
         public MyDiscordBotSharder(IOptions<DiscordBotSharderConfiguration> options, ILogger<DiscordBotSharder> logger, IPrefixProvider prefixes, ICommandQueue queue, CommandService commands, IServiceProvider services, DiscordClientSharder client) : base(options, logger, prefixes, queue, commands, services, client) { }

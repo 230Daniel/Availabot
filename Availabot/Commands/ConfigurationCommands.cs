@@ -13,26 +13,28 @@ using Availabot.Utils;
 using Disqord.Extensions.Interactivity;
 using Disqord.Gateway;
 using Disqord.Rest;
+using Microsoft.EntityFrameworkCore;
 
 namespace Availabot.Commands
 {
     public class ConfigurationCommands : DiscordGuildModuleBase
     {
         ILogger _logger;
-        DatabaseContext _db;
+        IDbContextFactory<DatabaseContext> _db;
         AvailabilityService _availability;
 
-        public ConfigurationCommands(ILoggerProvider loggerProvider, DatabaseContext db, AvailabilityService availability)
+        public ConfigurationCommands(ILoggerProvider loggerProvider, IDbContextFactory<DatabaseContext> db, AvailabilityService availability)
         {
             _logger = loggerProvider.CreateLogger("ConfigurationCommands");
             _db = db;
             _availability = availability;
         }
 
-        [Command("Setup"), RequireAuthorGuildPermissions(Permission.ManageGuild)]
+        [Command("setup"), RequireAuthorGuildPermissions(Permission.ManageGuild)]
         public async Task Setup()
         {
-            GuildConfiguration config = _db.GetGuildConfiguration(Context.GuildId);
+            using DatabaseContext db = _db.CreateDbContext();
+            GuildConfiguration config = db.GetGuildConfiguration(Context.GuildId);
 
             await Context.Channel.SendInfoAsync("Starting setup");
 
@@ -70,17 +72,17 @@ namespace Availabot.Commands
             ITextChannel channel = Context.Guild.Channels.First(x => x.Key == config.ChannelId).Value as ITextChannel;
             IUserMessage message = await channel.SendMessageAsync(new LocalMessageBuilder()
                 .WithContent("This message will be modified shortly...")
+                .WithMentions(LocalMentionsBuilder.None)
                 .Build());
 
             foreach (IEmoji emoji in Constants.NumberEmojis.Take(5))
-            {
                 await message.AddReactionAsync(emoji);
-            }
+            await message.AddReactionAsync(Constants.XEmoji);
 
             config.MessageId = message.Id;
 
-            _db.GuildConfigurations.Update(config);
-            await _db.SaveChangesAsync();
+            db.GuildConfigurations.Update(config);
+            await db.SaveChangesAsync();
 
             await _availability.UpdateGuildMessageAsync(Context.GuildId);
 
