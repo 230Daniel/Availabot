@@ -174,9 +174,8 @@ namespace Availabot.Services
                 GuildConfiguration config = db.GetGuildConfiguration(guildId);
                 List<AvailabilityPeriod> periods = db.GetFilteredAvailabilityPeriods(guildId);
 
-                IGuild guild = _gateway.GetGuild(guildId);
-                ITextChannel channel = _gateway.GetChannel(guildId, config.ChannelId) as ITextChannel;
-                IUserMessage message = await channel.FetchMessageAsync(config.MessageId) as IUserMessage;
+                if(!(_gateway.GetChannel(guildId, config.ChannelId) is ITextChannel channel)) return;
+                if(!(await channel.FetchMessageAsync(config.MessageId) is IUserMessage message)) return;
 
                 string content = "⠀\n__Available__\n\n";
 
