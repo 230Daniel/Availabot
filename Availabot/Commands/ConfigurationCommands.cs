@@ -74,6 +74,7 @@ namespace Availabot.Commands
                 .WithContent("This message will be modified shortly...")
                 .WithMentions(LocalMentionsBuilder.None)
                 .Build());
+            await message.PinAsync();
 
             foreach (IEmoji emoji in Constants.NumberEmojis.Take(5))
                 await message.AddReactionAsync(emoji);
