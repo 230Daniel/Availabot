@@ -12,6 +12,7 @@ using Disqord;
 using Disqord.Gateway;
 using Disqord.Rest;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Timer = System.Timers.Timer;
 
@@ -20,15 +21,17 @@ namespace Availabot.Services
     public class AvailabilityService
     {
         ILogger<AvailabilityService> _logger;
+        IConfiguration _configuration;
         IGatewayClient _gateway;
         IRestClient _rest;
         IDbContextFactory<DatabaseContext> _db;
         List<((ulong, ulong), System.Threading.Timer)> _scheduledUnavailables;
         Timer _updateAllGuildMessagesTimer;
 
-        public AvailabilityService(ILogger<AvailabilityService> logger, IGatewayClient gateway, IRestClient rest, IDbContextFactory<DatabaseContext> db)
+        public AvailabilityService(ILogger<AvailabilityService> logger, IConfiguration configuration, IGatewayClient gateway, IRestClient rest, IDbContextFactory<DatabaseContext> db)
         {
             _logger = logger;
+            _configuration = configuration;
             _gateway = gateway;
             _rest = rest;
             _db = db;
@@ -188,8 +191,11 @@ namespace Availabot.Services
                 else
                     content += "Nobody is available at the moment :(\n";
 
-                content += "\n*Use !available [time] or !unavailable to set your status\n" +
-                           "... or press a number button below to set yourself as available for the next x hours*\n";
+                string prefix = _configuration.GetValue<string>("prefix");
+                content += $"\n{prefix}for [amount of time] - Set yourself as available for an amount of time\n" +
+                           $"{prefix}until [time] - Set yourself as available until that time\n" +
+                           $"{prefix}unavailable - Set yourself as unavailable\n" +
+                           "Press a number button below to set yourself as available for the next x hours\n";
 
                 await message.ModifyAsync(x => x.Content = content);
             }

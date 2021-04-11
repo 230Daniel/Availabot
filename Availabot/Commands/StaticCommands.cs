@@ -13,7 +13,8 @@ namespace Availabot.Commands
             await Context.Channel.SendInfoAsync("Availabot",
                 "help - Show this list\n" +
                 "setup - Set up the bot\n" +
-                "available [time] - Set yourself as available for that time\n" +
+                "for [amount of time] - Set yourself as available for an amount of time\n" +
+                "until [time] - Set yourself as available until that time\n" +
                 "unavailable - Set yourself as unavailable");
         }
     }

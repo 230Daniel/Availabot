@@ -5,6 +5,7 @@ using Availabot.Services;
 using Database.Contexts;
 using Disqord.Bot;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Qmmands;
 
@@ -23,10 +24,19 @@ namespace Availabot.Commands
             _availability = availability;
         }
 
-        [Command("available")]
+        [Command("for")]
         public async Task Available([Remainder] TimeSpan timespan)
         {
             _logger.LogDebug($"{Context.Author} wants to be available for {timespan}");
+            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, timespan);
+            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {timespan.ToLongString()}");
+        }
+
+        [Command("until")]
+        public async Task AvailableUntil([Remainder] DateTime datetime)
+        {
+            _logger.LogDebug($"{Context.Author} wants to be available until {datetime}");
+            TimeSpan timespan = datetime - DateTime.UtcNow;
             await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, timespan);
             await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {timespan.ToLongString()}");
         }

@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Database.Contexts;
+using Disqord.Bot;
 
 namespace Availabot
 {
@@ -27,12 +28,10 @@ namespace Availabot
                 .ConfigureDiscordBotSharder<MyDiscordBotSharder>((context, bot) =>
                 {
                     bot.Token = context.Configuration["token"];
-                    bot.UseMentionPrefix = true;
-                    bot.Prefixes = new[] {"!"};
                     bot.ReadyEventDelayMode = ReadyEventDelayMode.Guilds;
                     bot.Intents += GatewayIntent.Members;
                     bot.Intents += GatewayIntent.VoiceStates;
-                    bot.Activities = new[] { new LocalActivity("with Disqord", ActivityType.Playing)};
+                    bot.Activities = new[] { new LocalActivity($"{context.Configuration["prefix"]}help", ActivityType.Playing)};
                     bot.OwnerIds = new[] { new Snowflake(218613903653863427) };
                     bot.ShardCount = 1;
                 })
@@ -55,6 +54,7 @@ namespace Availabot
         static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
             services.AddInteractivity();
+            services.AddPrefixProvider<PrefixProvider>();
             services.AddDbContextFactory<DatabaseContext>();
             services.AddSingleton<AvailabilityService>();
             services.AddSingleton<TimeSpanTypeParser>();

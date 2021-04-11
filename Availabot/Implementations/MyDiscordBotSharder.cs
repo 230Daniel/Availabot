@@ -77,6 +77,7 @@ namespace Availabot.Implementations
         protected override ValueTask AddTypeParsersAsync(CancellationToken cancellationToken = default)
         {
             Commands.AddTypeParser(new TimeSpanTypeParser());
+            Commands.AddTypeParser(new DateTimeTypeParser());
             return base.AddTypeParsersAsync(cancellationToken);
         }
 
