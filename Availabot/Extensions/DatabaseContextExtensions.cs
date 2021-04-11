@@ -44,5 +44,30 @@ namespace Availabot.Extensions
 
             return filteredPeriods.OrderByDescending(x => x.Expires).ToList();
         }
+
+        public static List<AvailabilityPeriod> GetUniqueAvailabilityPeriods(this DatabaseContext db)
+        {
+            List<AvailabilityPeriod> periods = db.AvailabilityPeriods.ToList();
+            List<AvailabilityPeriod> filteredPeriods = new List<AvailabilityPeriod>();
+
+            foreach (AvailabilityPeriod period in periods)
+            {
+                if(filteredPeriods.Any(x => x.GuildId == period.GuildId && x.UserId == period.UserId))
+                {
+                    AvailabilityPeriod oldPeriod = filteredPeriods.First(x => x.GuildId == period.GuildId && x.UserId == period.UserId);
+                    if (period.Expires > oldPeriod.Expires)
+                    {
+                        filteredPeriods.Remove(oldPeriod);
+                        filteredPeriods.Add(period);
+                    }
+                }
+                else
+                {
+                    filteredPeriods.Add(period);
+                }
+            }
+
+            return filteredPeriods.OrderByDescending(x => x.Expires).ToList();
+        }
     }
 }

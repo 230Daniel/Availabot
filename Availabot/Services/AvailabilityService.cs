@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Timers;
 using System.Threading.Tasks;
 using Availabot.Extensions;
@@ -12,6 +13,7 @@ using Disqord.Gateway;
 using Disqord.Rest;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Timer = System.Timers.Timer;
 
 namespace Availabot.Services
 {
@@ -21,7 +23,7 @@ namespace Availabot.Services
         IGatewayClient _gateway;
         IRestClient _rest;
         IDbContextFactory<DatabaseContext> _db;
-
+        List<((ulong, ulong), System.Threading.Timer)> _scheduledUnavailables;
         Timer _updateAllGuildMessagesTimer;
 
         public AvailabilityService(ILogger<AvailabilityService> logger, IGatewayClient gateway, IRestClient rest, IDbContextFactory<DatabaseContext> db)
@@ -30,6 +32,7 @@ namespace Availabot.Services
             _gateway = gateway;
             _rest = rest;
             _db = db;
+            _scheduledUnavailables = new List<((ulong, ulong), System.Threading.Timer)>();
             _updateAllGuildMessagesTimer = new Timer(10000);
             _updateAllGuildMessagesTimer.Elapsed += UpdateAllGuildMessagesTimer_Elapsed;
         }
@@ -37,6 +40,14 @@ namespace Availabot.Services
         public async Task StartAsync()
         {
             _updateAllGuildMessagesTimer.Start();
+
+            List<AvailabilityPeriod> overduePeriods = new List<AvailabilityPeriod>();
+
+            await using DatabaseContext db = _db.CreateDbContext();
+            List<AvailabilityPeriod> periods = db.GetUniqueAvailabilityPeriods();
+
+            foreach (AvailabilityPeriod period in periods)
+                ScheduleUnavailable(period);
         }
 
         public async Task HandleReactionAsync(object sender, ReactionAddedEventArgs e)
@@ -66,15 +77,6 @@ namespace Availabot.Services
             }
         }
 
-        private void UpdateAllGuildMessagesTimer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            using DatabaseContext db = _db.CreateDbContext();
-            foreach (ulong guildId in db.GuildConfigurations.Select(x => x.GuildId))
-            {
-                _ = UpdateGuildMessageAsync(guildId);
-            }
-        }
-
         public async Task MakeUserAvailableAsync(ulong guildId, ulong userId, TimeSpan time)
         {
             await using DatabaseContext db = _db.CreateDbContext();
@@ -98,6 +100,8 @@ namespace Availabot.Services
             
             await db.SaveChangesAsync();
             await UpdateGuildMessageAsync(guildId);
+            await GrantUserAvailableRoleAsync(guildId, userId);
+            ScheduleUnavailable(period);
         }
 
         public async Task MakeUserUnavailableAsync(ulong guildId, ulong userId)
@@ -110,6 +114,56 @@ namespace Availabot.Services
             
             await db.SaveChangesAsync();
             await UpdateGuildMessageAsync(guildId);
+            await RevokeUserAvailableRoleAsync(guildId, userId);
+        }
+
+        void ScheduleUnavailable(AvailabilityPeriod period)
+        {
+            if (_scheduledUnavailables.Any(x => x.Item1 == (period.GuildId, period.UserId)))
+            {
+                _scheduledUnavailables.First(x => x.Item1 == (period.GuildId, period.UserId)).Item2.Dispose();
+                _scheduledUnavailables.RemoveAll(x => x.Item1 == (period.GuildId, period.UserId));
+            }
+
+            TimeSpan delay = period.Expires - DateTime.UtcNow;
+            if (delay <= TimeSpan.Zero)
+            {
+                _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
+            }
+            else
+            {
+                System.Threading.Timer timer = new System.Threading.Timer(x =>
+                {
+                    _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
+                }, null, delay, Timeout.InfiniteTimeSpan);
+
+                _scheduledUnavailables.Add(((period.GuildId, period.UserId), timer));
+            }
+        }
+
+        async Task GrantUserAvailableRoleAsync(ulong guildId, ulong userId)
+        {
+            await using DatabaseContext db = _db.CreateDbContext();
+            GuildConfiguration config = db.GetGuildConfiguration(guildId);
+
+            await _rest.GrantRoleAsync(guildId, userId, config.RoleId);
+        }
+
+        async Task RevokeUserAvailableRoleAsync(ulong guildId, ulong userId)
+        {
+            await using DatabaseContext db = _db.CreateDbContext();
+            GuildConfiguration config = db.GetGuildConfiguration(guildId);
+
+            await _rest.RevokeRoleAsync(guildId, userId, config.RoleId);
+        }
+
+        void UpdateAllGuildMessagesTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            using DatabaseContext db = _db.CreateDbContext();
+            foreach (ulong guildId in db.GuildConfigurations.Select(x => x.GuildId))
+            {
+                _ = UpdateGuildMessageAsync(guildId);
+            }
         }
 
         public async Task UpdateGuildMessageAsync(ulong guildId)
