@@ -49,6 +49,8 @@ namespace Availabot.Services
 
             foreach (AvailabilityPeriod period in periods)
                 SchedulePeriodChanges(period);
+
+            // TODO: Check which users have the role but aren't available and take it away
         }
 
         public async Task HandleReactionAsync(object sender, ReactionAddedEventArgs e)
@@ -132,6 +134,7 @@ namespace Availabot.Services
             if(period.Starts <= DateTime.UtcNow)
             {
                 // Schedule unavailable
+                _ = GrantUserAvailableRoleAsync(period.GuildId, period.UserId);
                 TimeSpan delay = period.Expires - DateTime.UtcNow;
                 if (delay <= TimeSpan.Zero)
                 {
@@ -150,6 +153,7 @@ namespace Availabot.Services
             else
             {
                 // Schedule available
+                _ = RevokeUserAvailableRoleAsync(period.GuildId, period.UserId);
                 TimeSpan delay = period.Starts - DateTime.UtcNow;
                 if (delay <= TimeSpan.Zero)
                 {
