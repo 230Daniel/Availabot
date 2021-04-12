@@ -8,7 +8,6 @@ namespace Availabot.Services
 {
     public class BotService : DiscordClientService
     {
-        ILogger<BotService> _logger;
         AvailabilityService _availability;
 
         public BotService(
@@ -17,7 +16,6 @@ namespace Availabot.Services
             AvailabilityService availability)
             : base(logger, client)
         {
-            _logger = logger;
             _availability = availability;
         }
 

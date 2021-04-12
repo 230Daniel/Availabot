@@ -44,8 +44,6 @@ namespace Availabot.Services
         {
             _updateAllGuildMessagesTimer.Start();
 
-            List<AvailabilityPeriod> overduePeriods = new List<AvailabilityPeriod>();
-
             await using DatabaseContext db = _db.CreateDbContext();
             List<AvailabilityPeriod> periods = db.GetUniqueAvailabilityPeriods();
 

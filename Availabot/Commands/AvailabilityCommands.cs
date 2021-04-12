@@ -3,10 +3,7 @@ using System.Threading.Tasks;
 using Availabot.Commands.TypeParsers;
 using Availabot.Extensions;
 using Availabot.Services;
-using Database.Contexts;
 using Disqord.Bot;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Qmmands;
 
@@ -15,13 +12,11 @@ namespace Availabot.Commands
     public class AvailabilityCommands : DiscordGuildModuleBase
     {
         ILogger _logger;
-        IDbContextFactory<DatabaseContext> _db;
         AvailabilityService _availability;
 
-        public AvailabilityCommands(ILoggerProvider loggerProvider, IDbContextFactory<DatabaseContext> db, AvailabilityService availability)
+        public AvailabilityCommands(ILoggerProvider loggerProvider, AvailabilityService availability)
         {
             _logger = loggerProvider.CreateLogger("AvailabilityCommands");
-            _db = db;
             _availability = availability;
         }
 

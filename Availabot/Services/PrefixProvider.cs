@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Disqord.Bot;
 using Disqord.Gateway;
@@ -18,13 +15,13 @@ namespace Availabot.Services
             _config = config;
         }
 
-        public async ValueTask<IEnumerable<IPrefix>> GetPrefixesAsync(IGatewayUserMessage message)
+        public ValueTask<IEnumerable<IPrefix>> GetPrefixesAsync(IGatewayUserMessage message)
         {
-            return new IPrefix[]
+            return ValueTask.FromResult<IEnumerable<IPrefix>>(new IPrefix[]
             {
                 new StringPrefix(_config.GetValue<string>("prefix")),
                 new MentionPrefix(_config.GetValue<ulong>("userId"))
-            };
+            });
         }
     }
 }

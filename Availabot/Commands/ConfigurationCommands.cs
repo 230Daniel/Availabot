@@ -5,7 +5,6 @@ using Database.Contexts;
 using Database.Models;
 using Disqord;
 using Disqord.Bot;
-using Microsoft.Extensions.Logging;
 using Qmmands;
 using Availabot.Extensions;
 using Availabot.Services;
@@ -19,13 +18,11 @@ namespace Availabot.Commands
 {
     public class ConfigurationCommands : DiscordGuildModuleBase
     {
-        ILogger _logger;
         IDbContextFactory<DatabaseContext> _db;
         AvailabilityService _availability;
 
-        public ConfigurationCommands(ILoggerProvider loggerProvider, IDbContextFactory<DatabaseContext> db, AvailabilityService availability)
+        public ConfigurationCommands(IDbContextFactory<DatabaseContext> db, AvailabilityService availability)
         {
-            _logger = loggerProvider.CreateLogger("ConfigurationCommands");
             _db = db;
             _availability = availability;
         }
