@@ -14,9 +14,9 @@ namespace Availabot.Commands
         ILogger _logger;
         AvailabilityService _availability;
 
-        public AvailabilityCommands(ILoggerProvider loggerProvider, AvailabilityService availability)
+        public AvailabilityCommands(ILogger<AvailabilityCommands> logger, AvailabilityService availability)
         {
-            _logger = loggerProvider.CreateLogger("AvailabilityCommands");
+            _logger = logger;
             _availability = availability;
         }
 
