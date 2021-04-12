@@ -42,7 +42,7 @@ namespace Availabot.Extensions
                 }
             }
 
-            return filteredPeriods.OrderByDescending(x => x.Expires).ToList();
+            return filteredPeriods;
         }
 
         public static List<AvailabilityPeriod> GetUniqueAvailabilityPeriods(this DatabaseContext db)

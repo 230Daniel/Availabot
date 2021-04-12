@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Availabot.Commands.TypeParsers;
 using Availabot.Extensions;
 using Availabot.Services;
 using Database.Contexts;
@@ -25,20 +26,27 @@ namespace Availabot.Commands
         }
 
         [Command("for")]
-        public async Task Available([Remainder] TimeSpan timespan)
+        public async Task Available([Remainder] TimeSpan duration)
         {
-            _logger.LogDebug($"{Context.Author} wants to be available for {timespan}");
-            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, timespan);
-            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {timespan.ToLongString()}");
+            _logger.LogDebug($"{Context.Author} wants to be available for {duration}");
+            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, DateTime.UtcNow, DateTime.UtcNow + duration);
+            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {duration.ToLongString()}");
         }
 
         [Command("until")]
-        public async Task AvailableUntil([Remainder] DateTime datetime)
+        public async Task AvailableUntil([Remainder] DateTime expires)
         {
-            _logger.LogDebug($"{Context.Author} wants to be available until {datetime}");
-            TimeSpan timespan = datetime - DateTime.UtcNow;
-            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, timespan);
-            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {timespan.ToLongString()}");
+            _logger.LogDebug($"{Context.Author} wants to be available until {expires}");
+            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, DateTime.UtcNow, expires);
+            await Context.Channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for {(expires - DateTime.UtcNow).ToLongString()}");
+        }
+
+        [Command("from")]
+        public async Task FromUntil([Remainder] FromUntilParameters parameters)
+        {
+            _logger.LogDebug($"{Context.Author} wants to be available from {parameters.Starts} until {parameters.Expires}");
+            await _availability.MakeUserAvailableAsync(Context.GuildId, Context.Author.Id, parameters.Starts, parameters.Expires);
+            await Context.Channel.SendSuccessAsync("Scheduled availability", $"You'll be marked as available for {(parameters.Expires - parameters.Starts).ToLongString()} starting in {(parameters.Starts - DateTime.UtcNow).ToLongString()}");
         }
 
         [Command("unavailable")]

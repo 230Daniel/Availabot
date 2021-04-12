@@ -78,6 +78,7 @@ namespace Availabot.Implementations
         {
             Commands.AddTypeParser(new TimeSpanTypeParser());
             Commands.AddTypeParser(new DateTimeTypeParser());
+            Commands.AddTypeParser(new FromUntilParametersTypeParser());
             return base.AddTypeParsersAsync(cancellationToken);
         }
 

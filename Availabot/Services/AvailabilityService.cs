@@ -25,7 +25,7 @@ namespace Availabot.Services
         IGatewayClient _gateway;
         IRestClient _rest;
         IDbContextFactory<DatabaseContext> _db;
-        List<((ulong, ulong), System.Threading.Timer)> _scheduledUnavailables;
+        List<((ulong, ulong), System.Threading.Timer)> _scheduledPeriodChanges;
         Timer _updateAllGuildMessagesTimer;
 
         public AvailabilityService(ILogger<AvailabilityService> logger, IConfiguration configuration, IGatewayClient gateway, IRestClient rest, IDbContextFactory<DatabaseContext> db)
@@ -35,7 +35,7 @@ namespace Availabot.Services
             _gateway = gateway;
             _rest = rest;
             _db = db;
-            _scheduledUnavailables = new List<((ulong, ulong), System.Threading.Timer)>();
+            _scheduledPeriodChanges = new List<((ulong, ulong), System.Threading.Timer)>();
             _updateAllGuildMessagesTimer = new Timer(10000);
             _updateAllGuildMessagesTimer.Elapsed += UpdateAllGuildMessagesTimer_Elapsed;
         }
@@ -50,7 +50,7 @@ namespace Availabot.Services
             List<AvailabilityPeriod> periods = db.GetUniqueAvailabilityPeriods();
 
             foreach (AvailabilityPeriod period in periods)
-                ScheduleUnavailable(period);
+                SchedulePeriodChanges(period);
         }
 
         public async Task HandleReactionAsync(object sender, ReactionAddedEventArgs e)
@@ -67,7 +67,7 @@ namespace Availabot.Services
                 {
                     int hours = Array.IndexOf(Constants.NumberEmojis, e.Emoji) + 1;
                     _logger.LogDebug($"{e.Member} wants to be available for {hours} hours");
-                    await MakeUserAvailableAsync(e.GuildId.Value, e.UserId, TimeSpan.FromHours(hours));
+                    await MakeUserAvailableAsync(e.GuildId.Value, e.UserId, DateTime.UtcNow, DateTime.UtcNow + TimeSpan.FromHours(hours));
                     await channel.SendSuccessAsync("Marked as available", $"You'll be marked as available for the next {hours} hour{(hours == 1 ? "" : "s")}", raw: Mention.User(e.UserId));
                 }
                 else if (e.Emoji.Equals(Constants.XEmoji))
@@ -80,7 +80,7 @@ namespace Availabot.Services
             }
         }
 
-        public async Task MakeUserAvailableAsync(ulong guildId, ulong userId, TimeSpan time)
+        public async Task MakeUserAvailableAsync(ulong guildId, ulong userId, DateTime starts, DateTime expires)
         {
             await using DatabaseContext db = _db.CreateDbContext();
             AvailabilityPeriod period = await db.AvailabilityPeriods.FirstOrDefaultAsync(x => x.GuildId == guildId && x.UserId == userId);
@@ -91,20 +91,22 @@ namespace Availabot.Services
                 {
                     GuildId = guildId,
                     UserId = userId,
-                    Expires = DateTime.UtcNow + time
+                    Starts = starts,
+                    Expires = expires
                 };
                 await db.AvailabilityPeriods.AddAsync(period);
             }
             else
             {
-                period.Expires = DateTime.UtcNow + time;
+                period.Starts = starts;
+                period.Expires = expires;
                 db.AvailabilityPeriods.Update(period);
             }
             
             await db.SaveChangesAsync();
             await UpdateGuildMessageAsync(guildId);
-            await GrantUserAvailableRoleAsync(guildId, userId);
-            ScheduleUnavailable(period);
+            if(period.Starts <= DateTime.UtcNow) await GrantUserAvailableRoleAsync(guildId, userId);
+            SchedulePeriodChanges(period);
         }
 
         public async Task MakeUserUnavailableAsync(ulong guildId, ulong userId)
@@ -120,27 +122,50 @@ namespace Availabot.Services
             await RevokeUserAvailableRoleAsync(guildId, userId);
         }
 
-        void ScheduleUnavailable(AvailabilityPeriod period)
+        void SchedulePeriodChanges(AvailabilityPeriod period)
         {
-            if (_scheduledUnavailables.Any(x => x.Item1 == (period.GuildId, period.UserId)))
+            if (_scheduledPeriodChanges.Any(x => x.Item1 == (period.GuildId, period.UserId)))
             {
-                _scheduledUnavailables.First(x => x.Item1 == (period.GuildId, period.UserId)).Item2.Dispose();
-                _scheduledUnavailables.RemoveAll(x => x.Item1 == (period.GuildId, period.UserId));
+                foreach(((ulong, ulong), System.Threading.Timer) change in _scheduledPeriodChanges.Where(x => x.Item1 == (period.GuildId, period.UserId)))
+                    change.Item2.Dispose();
+                _scheduledPeriodChanges.RemoveAll(x => x.Item1 == (period.GuildId, period.UserId));
             }
 
-            TimeSpan delay = period.Expires - DateTime.UtcNow;
-            if (delay <= TimeSpan.Zero)
+            if(period.Starts <= DateTime.UtcNow)
             {
-                _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
+                // Schedule unavailable
+                TimeSpan delay = period.Expires - DateTime.UtcNow;
+                if (delay <= TimeSpan.Zero)
+                {
+                    _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
+                }
+                else
+                {
+                    System.Threading.Timer timer = new System.Threading.Timer(x =>
+                    {
+                        _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
+                    }, null, delay, Timeout.InfiniteTimeSpan);
+
+                    _scheduledPeriodChanges.Add(((period.GuildId, period.UserId), timer));
+                }
             }
             else
             {
-                System.Threading.Timer timer = new System.Threading.Timer(x =>
+                // Schedule available
+                TimeSpan delay = period.Starts - DateTime.UtcNow;
+                if (delay <= TimeSpan.Zero)
                 {
-                    _ = MakeUserUnavailableAsync(period.GuildId, period.UserId);
-                }, null, delay, Timeout.InfiniteTimeSpan);
+                    _ = MakeUserAvailableAsync(period.GuildId, period.UserId, period.Starts, period.Expires);
+                }
+                else
+                {
+                    System.Threading.Timer timer = new System.Threading.Timer(x =>
+                    {
+                        _ = MakeUserAvailableAsync(period.GuildId, period.UserId, period.Starts, period.Expires);
+                    }, null, delay, Timeout.InfiniteTimeSpan);
 
-                _scheduledUnavailables.Add(((period.GuildId, period.UserId), timer));
+                    _scheduledPeriodChanges.Add(((period.GuildId, period.UserId), timer));
+                }
             }
         }
 
@@ -180,22 +205,32 @@ namespace Availabot.Services
                 if(!(_gateway.GetChannel(guildId, config.ChannelId) is ITextChannel channel)) return;
                 if(!(await channel.FetchMessageAsync(config.MessageId) is IUserMessage message)) return;
 
-                string content = "⠀\n__Available__\n\n";
+                string content = "⠀";
 
-                if (periods.Count > 0)
+                if (periods.Count(x => x.Starts <= DateTime.UtcNow) > 0)
                 {
-                    foreach (AvailabilityPeriod period in periods)
+                    content += "\n__Currently Available__\n\n";
+                    foreach (AvailabilityPeriod period in periods.Where(x => x.Starts <= DateTime.UtcNow).OrderByDescending(x => x.Expires))
                         content +=
                             $"{Mention.User(period.UserId)} for {(period.Expires - DateTime.UtcNow).ToLongString()}\n";
                 }
                 else
-                    content += "Nobody is available at the moment :(\n";
+                    content += "\nNobody is available at the moment :(\n";
+
+                if (periods.Count(x => x.Starts > DateTime.UtcNow) > 0)
+                {
+                    content += "\n__Becoming Available__\n\n";
+                    foreach (AvailabilityPeriod period in periods.Where(x => x.Starts > DateTime.UtcNow).OrderBy(x => x.Starts))
+                        content +=
+                            $"{Mention.User(period.UserId)} in {(period.Starts - DateTime.UtcNow).ToLongString()}\n";
+                }
 
                 string prefix = _configuration.GetValue<string>("prefix");
-                content += $"\n{prefix}for [amount of time] - Set yourself as available for an amount of time\n" +
-                           $"{prefix}until [time] - Set yourself as available until that time\n" +
-                           $"{prefix}unavailable - Set yourself as unavailable\n" +
-                           "Press a number button below to set yourself as available for the next x hours\n";
+                content += $"\n> {prefix}for [timespan]\n" +
+                           $"> {prefix}until [datetime]\n" +
+                           $"> {prefix}from [datetime] until [datetime]\n" +
+                           $"> {prefix}unavailable\n\n" +
+                           "Or press a number button below to set yourself as available for the next x hours\n";
 
                 await message.ModifyAsync(x => x.Content = content);
             }
