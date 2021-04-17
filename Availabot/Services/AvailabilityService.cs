@@ -27,6 +27,7 @@ namespace Availabot.Services
         IDbContextFactory<DatabaseContext> _db;
         List<((ulong, ulong), System.Threading.Timer)> _scheduledPeriodChanges;
         Timer _updateAllGuildMessagesTimer;
+        Dictionary<ulong, string> _guildMessageCache;
 
         public AvailabilityService(ILogger<AvailabilityService> logger, IConfiguration configuration, IGatewayClient gateway, IRestClient rest, IDbContextFactory<DatabaseContext> db)
         {
@@ -38,6 +39,7 @@ namespace Availabot.Services
             _scheduledPeriodChanges = new List<((ulong, ulong), System.Threading.Timer)>();
             _updateAllGuildMessagesTimer = new Timer(10000);
             _updateAllGuildMessagesTimer.Elapsed += UpdateAllGuildMessagesTimer_Elapsed;
+            _guildMessageCache = new Dictionary<ulong, string>();
         }
 
         public async Task StartAsync()
@@ -205,7 +207,12 @@ namespace Availabot.Services
                 List<AvailabilityPeriod> periods = db.GetFilteredAvailabilityPeriods(guildId);
 
                 if(!(_gateway.GetChannel(guildId, config.ChannelId) is ITextChannel channel)) return;
-                if(!(await channel.FetchMessageAsync(config.MessageId) is IUserMessage message)) return;
+
+                if (!_guildMessageCache.TryGetValue(config.MessageId, out string previousContent))
+                {
+                    IUserMessage message = channel.FetchMessageAsync(config.MessageId).GetAwaiter().GetResult() as IUserMessage;
+                    _guildMessageCache.TryAdd(config.MessageId, message.Content);
+                }
 
                 string content = "⠀";
 
@@ -232,9 +239,14 @@ namespace Availabot.Services
                            $"> {prefix}until [datetime]\n" +
                            $"> {prefix}from [datetime] until [datetime]\n" +
                            $"> {prefix}unavailable\n\n" +
-                           "Or press a number button below to set yourself as available for the next x hours\n";
+                           "Or press a number button below to set yourself as available for the next x hours";
 
-                await message.ModifyAsync(x => x.Content = content);
+                if(previousContent == content) return;
+
+                await channel.ModifyMessageAsync(config.MessageId, x => x.Content = content);
+
+                _guildMessageCache.Remove(config.MessageId);
+                _guildMessageCache.Add(config.MessageId, content);
             }
             catch (Exception e)
             {
